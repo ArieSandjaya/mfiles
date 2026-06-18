@@ -46,18 +46,25 @@ public partial class MainWindow : Window
 
     private async Task ShowMetadataDialogAsync(string filePath)
     {
-        var dialogViewModel = new MetadataEntryViewModel(_categoryService, filePath);
-        await dialogViewModel.LoadCategoriesAsync();
-
-        var dialog = new MetadataEntryDialog(dialogViewModel) { Owner = this };
-
-        if (dialog.ShowDialog() == true)
+        try
         {
-            await _viewModel.AddDocumentFromFileAsync(
-                dialogViewModel.SourceFilePath,
-                dialogViewModel.Title,
-                dialogViewModel.SelectedCategory?.Id,
-                dialogViewModel.BuildMetadata());
+            var dialogViewModel = new MetadataEntryViewModel(_categoryService, filePath);
+            await dialogViewModel.LoadCategoriesAsync();
+
+            var dialog = new MetadataEntryDialog(dialogViewModel) { Owner = this };
+
+            if (dialog.ShowDialog() == true)
+            {
+                await _viewModel.AddDocumentFromFileAsync(
+                    dialogViewModel.SourceFilePath,
+                    dialogViewModel.Title,
+                    dialogViewModel.SelectedCategory?.Id,
+                    dialogViewModel.BuildMetadata());
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Gagal menambahkan dokumen:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

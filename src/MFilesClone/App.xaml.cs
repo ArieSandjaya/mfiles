@@ -17,21 +17,29 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        var services = new ServiceCollection();
-        ConfigureServices(services);
-        Services = services.BuildServiceProvider();
-
-        Directory.CreateDirectory(PathProvider.AppDataRoot);
-
-        using (var context = Services.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext())
+        try
         {
-            context.Database.Migrate();
+            var services = new ServiceCollection();
+            ConfigureServices(services);
+            Services = services.BuildServiceProvider();
+
+            Directory.CreateDirectory(PathProvider.AppDataRoot);
+
+            using (var context = Services.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext())
+            {
+                context.Database.Migrate();
+            }
+
+            Services.GetRequiredService<VaultService>().EnsureVaultExists();
+
+            var mainWindow = Services.GetRequiredService<MainWindow>();
+            mainWindow.Show();
         }
-
-        Services.GetRequiredService<VaultService>().EnsureVaultExists();
-
-        var mainWindow = Services.GetRequiredService<MainWindow>();
-        mainWindow.Show();
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Gagal memulai aplikasi:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(-1);
+        }
     }
 
     private static void ConfigureServices(ServiceCollection services)

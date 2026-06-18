@@ -58,10 +58,17 @@ public partial class MetadataEntryViewModel : ViewModelBase
             return;
         }
 
-        var category = await _categoryService.CreateAsync(NewCategoryName.Trim());
-        Categories.Add(category);
-        SelectedCategory = category;
-        NewCategoryName = string.Empty;
+        try
+        {
+            var category = await _categoryService.CreateAsync(NewCategoryName.Trim());
+            Categories.Add(category);
+            SelectedCategory = category;
+            NewCategoryName = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Gagal menambah kategori:\n{ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
     }
 
     public IEnumerable<(string Key, string Value)> BuildMetadata()
