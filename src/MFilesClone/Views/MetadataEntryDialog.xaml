@@ -1,0 +1,45 @@
+<Window x:Class="MFilesClone.Views.MetadataEntryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Input Metadata Dokumen" Height="420" Width="420"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="{Binding OriginalFileName, StringFormat='File: {0}'}" Margin="0,0,0,15" FontWeight="Bold" />
+
+        <TextBlock Grid.Row="1" Text="Judul" Margin="0,0,0,3" />
+        <TextBox Grid.Row="2" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+
+        <TextBlock Grid.Row="3" Text="Kategori" Margin="0,0,0,3" />
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,12">
+            <ComboBox Width="200" ItemsSource="{Binding Categories}" DisplayMemberPath="Name"
+                      SelectedItem="{Binding SelectedCategory}" />
+            <TextBox Width="100" Margin="5,0,0,0" Text="{Binding NewCategoryName, UpdateSourceTrigger=PropertyChanged}" />
+            <Button Content="+ Baru" Margin="5,0,0,0" Command="{Binding AddCategoryCommand}" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="5" Text="Deskripsi" Margin="0,0,0,3" />
+        <TextBox Grid.Row="6" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True" Height="50" TextWrapping="Wrap" Margin="0,0,0,12" />
+
+        <TextBlock Grid.Row="7" Text="Tags (pisahkan dengan koma)" Margin="0,0,0,3" />
+        <TextBox Grid.Row="8" VerticalAlignment="Top" Text="{Binding Tags, UpdateSourceTrigger=PropertyChanged}" />
+
+        <StackPanel Grid.Row="9" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="OK" Width="80" IsDefault="True" Click="OkButton_Click" />
+            <Button Content="Batal" Width="80" Margin="10,0,0,0" IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</Window>
