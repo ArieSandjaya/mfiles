@@ -26,31 +26,32 @@ public partial class MainViewModel : ViewModelBase
         _categoryService = categoryService;
     }
 
+    private int _refreshSequence;
+
     public async Task InitializeAsync()
     {
-        await LoadCategoriesAsync();
+        await RefreshCategoriesAsync();
         await RefreshAsync();
     }
 
-    private async Task LoadCategoriesAsync()
+    public async Task RefreshCategoriesAsync()
     {
-        Categories.Clear();
-        foreach (var category in await _categoryService.GetAllAsync())
-        {
-            Categories.Add(category);
-        }
+        Categories.ReplaceAll(await _categoryService.GetAllAsync());
     }
 
     [RelayCommand]
     public async Task RefreshAsync()
     {
+        var sequence = ++_refreshSequence;
         var results = await _documentService.SearchAsync(SearchText, SelectedCategoryFilter?.Id);
 
-        Documents.Clear();
-        foreach (var document in results)
+        if (sequence != _refreshSequence)
         {
-            Documents.Add(document);
+            // A newer refresh has already started; its results take precedence.
+            return;
         }
+
+        Documents.ReplaceAll(results);
     }
 
     partial void OnSearchTextChanged(string value) => _ = RefreshAsync();
@@ -60,7 +61,6 @@ public partial class MainViewModel : ViewModelBase
     public async Task AddDocumentFromFileAsync(string sourceFilePath, string title, int? categoryId, IEnumerable<(string Key, string Value)> metadata)
     {
         await _documentService.CreateDocumentAsync(sourceFilePath, title, categoryId, metadata);
-        await LoadCategoriesAsync();
         await RefreshAsync();
     }
 

@@ -37,7 +37,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Gagal memulai aplikasi:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            ErrorPresenter.Show("Gagal memulai aplikasi", ex);
             Shutdown(-1);
         }
     }

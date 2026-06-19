@@ -29,4 +29,9 @@ public class VaultService
     {
         return Path.Combine(PathProvider.VaultRoot, vaultFileName);
     }
+
+    public void DeleteFile(string vaultFileName)
+    {
+        File.Delete(GetFullPath(vaultFileName));
+    }
 }

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using MFilesClone.Models;
 using MFilesClone.Services;
 using MFilesClone.ViewModels;
 
@@ -34,37 +35,68 @@ public partial class MainWindow : Window
         }
 
         var filePaths = (string[])e.Data.GetData(DataFormats.FileDrop)!;
+        var categories = await _categoryService.GetAllAsync();
+        var failures = new List<string>();
+        var addedAny = false;
 
         foreach (var filePath in filePaths)
         {
-            if (File.Exists(filePath))
+            if (!File.Exists(filePath))
             {
-                await ShowMetadataDialogAsync(filePath);
+                continue;
             }
+
+            try
+            {
+                if (await ShowMetadataDialogAsync(filePath, categories))
+                {
+                    addedAny = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{Path.GetFileName(filePath)}: {ex.Message}");
+            }
+        }
+
+        if (addedAny)
+        {
+            await _viewModel.RefreshCategoriesAsync();
+        }
+
+        if (failures.Count > 0)
+        {
+            MessageBox.Show(
+                $"Gagal menambahkan {failures.Count} file:\n" + string.Join("\n", failures),
+                "Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
-    private async Task ShowMetadataDialogAsync(string filePath)
+    private async Task<bool> ShowMetadataDialogAsync(string filePath, List<Category> categories)
     {
-        try
-        {
-            var dialogViewModel = new MetadataEntryViewModel(_categoryService, filePath);
-            await dialogViewModel.LoadCategoriesAsync();
+        var dialogViewModel = new MetadataEntryViewModel(_categoryService, filePath);
+        dialogViewModel.SetCategories(categories);
 
-            var dialog = new MetadataEntryDialog(dialogViewModel) { Owner = this };
+        var dialog = new MetadataEntryDialog(dialogViewModel) { Owner = this };
 
-            if (dialog.ShowDialog() == true)
-            {
-                await _viewModel.AddDocumentFromFileAsync(
-                    dialogViewModel.SourceFilePath,
-                    dialogViewModel.Title,
-                    dialogViewModel.SelectedCategory?.Id,
-                    dialogViewModel.BuildMetadata());
-            }
-        }
-        catch (Exception ex)
+        if (dialog.ShowDialog() != true)
         {
-            MessageBox.Show($"Gagal menambahkan dokumen:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
         }
+
+        await _viewModel.AddDocumentFromFileAsync(
+            dialogViewModel.SourceFilePath,
+            dialogViewModel.Title,
+            dialogViewModel.SelectedCategory?.Id,
+            dialogViewModel.BuildMetadata());
+
+        if (dialogViewModel.SelectedCategory is { } selected && categories.All(c => c.Id != selected.Id))
+        {
+            categories.Add(selected);
+        }
+
+        return true;
     }
 }

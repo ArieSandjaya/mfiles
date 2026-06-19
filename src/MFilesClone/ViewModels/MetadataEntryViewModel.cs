@@ -41,13 +41,9 @@ public partial class MetadataEntryViewModel : ViewModelBase
         Title = Path.GetFileNameWithoutExtension(sourceFilePath);
     }
 
-    public async Task LoadCategoriesAsync()
+    public void SetCategories(IEnumerable<Category> categories)
     {
-        Categories.Clear();
-        foreach (var category in await _categoryService.GetAllAsync())
-        {
-            Categories.Add(category);
-        }
+        Categories.ReplaceAll(categories);
     }
 
     [RelayCommand]
@@ -58,16 +54,24 @@ public partial class MetadataEntryViewModel : ViewModelBase
             return;
         }
 
+        var trimmedName = NewCategoryName.Trim();
+
+        if (Categories.Any(c => string.Equals(c.Name, trimmedName, StringComparison.OrdinalIgnoreCase)))
+        {
+            System.Windows.MessageBox.Show($"Kategori '{trimmedName}' sudah ada.", "Validasi", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return;
+        }
+
         try
         {
-            var category = await _categoryService.CreateAsync(NewCategoryName.Trim());
+            var category = await _categoryService.CreateAsync(trimmedName);
             Categories.Add(category);
             SelectedCategory = category;
             NewCategoryName = string.Empty;
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Gagal menambah kategori:\n{ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            ErrorPresenter.Show("Gagal menambah kategori", ex);
         }
     }
 

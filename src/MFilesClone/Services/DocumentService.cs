@@ -23,44 +23,51 @@ public class DocumentService
         IEnumerable<(string Key, string Value)> metadata)
     {
         var vaultFileName = _vaultService.StoreFile(sourceFilePath);
-        var fileInfo = new FileInfo(sourceFilePath);
-        var now = DateTime.UtcNow;
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var document = new Document
+        try
         {
-            Title = title,
-            CategoryId = categoryId,
-            CreatedAt = now,
-            ModifiedAt = now,
-            IsDeleted = false,
-        };
+            var fileInfo = new FileInfo(sourceFilePath);
+            var now = DateTime.UtcNow;
 
-        var version = new DocumentVersion
-        {
-            VersionNumber = 1,
-            VaultFileName = vaultFileName,
-            OriginalFileName = Path.GetFileName(sourceFilePath),
-            FileExtension = fileInfo.Extension,
-            FileSizeBytes = fileInfo.Length,
-            StoredAt = now,
-        };
+            await using var context = await _contextFactory.CreateDbContextAsync();
 
-        document.Versions.Add(version);
+            var version = new DocumentVersion
+            {
+                VersionNumber = 1,
+                VaultFileName = vaultFileName,
+                OriginalFileName = Path.GetFileName(sourceFilePath),
+                FileExtension = fileInfo.Extension,
+                FileSizeBytes = fileInfo.Length,
+                StoredAt = now,
+            };
 
-        foreach (var (key, value) in metadata)
-        {
-            document.Metadata.Add(new DocumentMetadata { Key = key, Value = value });
+            var document = new Document
+            {
+                Title = title,
+                CategoryId = categoryId,
+                CreatedAt = now,
+                ModifiedAt = now,
+                IsDeleted = false,
+                CurrentVersion = version,
+            };
+
+            document.Versions.Add(version);
+
+            foreach (var (key, value) in metadata)
+            {
+                document.Metadata.Add(new DocumentMetadata { Key = key, Value = value });
+            }
+
+            context.Documents.Add(document);
+            await context.SaveChangesAsync();
+
+            return document;
         }
-
-        context.Documents.Add(document);
-        await context.SaveChangesAsync();
-
-        document.CurrentVersionId = version.Id;
-        await context.SaveChangesAsync();
-
-        return document;
+        catch
+        {
+            _vaultService.DeleteFile(vaultFileName);
+            throw;
+        }
     }
 
     public async Task<List<Document>> GetAllAsync()
@@ -71,7 +78,6 @@ public class DocumentService
             .Where(d => !d.IsDeleted)
             .Include(d => d.Category)
             .Include(d => d.CurrentVersion)
-            .Include(d => d.Metadata)
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
     }
@@ -84,7 +90,6 @@ public class DocumentService
             .Where(d => !d.IsDeleted)
             .Include(d => d.Category)
             .Include(d => d.CurrentVersion)
-            .Include(d => d.Metadata)
             .AsQueryable();
 
         if (categoryId.HasValue)
