@@ -1,3 +1,4 @@
+using System.IO;
 using System.Security.AccessControl;
 using DokanNet;
 using Microsoft.Extensions.DependencyInjection;

@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 namespace MFilesClone.ShellExtension.Interop;
 
 [Flags]
-internal enum ExpCmdFlags
+public enum ExpCmdFlags
 {
     Default = 0,
     HasSubCommands = 0x1,
@@ -14,7 +14,7 @@ internal enum ExpCmdFlags
     SeparateFolder = 0x20,
 }
 
-internal enum ExpCmdState
+public enum ExpCmdState
 {
     Enabled = 0,
     Disabled = 0x1,
