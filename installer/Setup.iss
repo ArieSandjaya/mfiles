@@ -12,7 +12,7 @@
 #define AppName "MFiles Clone"
 #define AppVersion "1.0.0"
 #define AppPublisher "MFiles Clone"
-#define ShellExtensionClsid "{d3e4a1c2-9b8a-4f7e-8b3a-2c1d5e6f7a8b}"
+#define ShellExtensionClsid "{{d3e4a1c2-9b8a-4f7e-8b3a-2c1d5e6f7a8b}}"
 
 [Setup]
 AppId={{8F3E2B7A-4C1D-4E9B-9A52-1F2C3D4E5F60}}
