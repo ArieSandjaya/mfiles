@@ -23,6 +23,14 @@
             <Button Content="Refresh" Margin="15,0,0,0" Command="{Binding RefreshCommand}" />
             <Button Content="Hapus" Margin="5,0,0,0" Command="{Binding DeleteSelectedCommand}"
                     CommandParameter="{Binding SelectedItem, ElementName=DocumentsGrid}" />
+            <Button Content="Check Out" Margin="15,0,0,0" Command="{Binding CheckOutSelectedCommand}"
+                    CommandParameter="{Binding SelectedItem, ElementName=DocumentsGrid}" />
+            <Button Content="Batal Check Out" Margin="5,0,0,0" Command="{Binding CancelCheckOutSelectedCommand}"
+                    CommandParameter="{Binding SelectedItem, ElementName=DocumentsGrid}" />
+            <Button Content="Check In..." Margin="5,0,0,0" Click="CheckIn_Click" />
+            <Button Content="Export..." Margin="5,0,0,0" Click="Export_Click" />
+            <Button Content="Riwayat Versi..." Margin="5,0,0,0" Click="VersionHistory_Click" />
+            <Button Content="Preview" Margin="5,0,0,0" Click="Preview_Click" />
         </StackPanel>
 
         <Grid Grid.Row="1">
@@ -33,6 +41,8 @@
                     <DataGridTextColumn Header="Kategori" Binding="{Binding Category.Name}" Width="*" />
                     <DataGridTextColumn Header="Dibuat" Binding="{Binding CreatedAt}" Width="*" />
                     <DataGridTextColumn Header="Ukuran (bytes)" Binding="{Binding CurrentVersion.FileSizeBytes}" Width="*" />
+                    <DataGridTextColumn Header="Versi" Binding="{Binding CurrentVersion.VersionNumber}" Width="60" />
+                    <DataGridTextColumn Header="Dikunci Oleh" Binding="{Binding CheckedOutBy}" Width="*" />
                 </DataGrid.Columns>
             </DataGrid>
 

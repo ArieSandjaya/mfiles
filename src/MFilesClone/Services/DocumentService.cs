@@ -135,4 +135,119 @@ public class DocumentService
         document.IsDeleted = true;
         await context.SaveChangesAsync();
     }
+
+    public async Task CheckOutAsync(int documentId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var document = await context.Documents.FindAsync(documentId)
+            ?? throw new InvalidOperationException("Dokumen tidak ditemukan.");
+
+        if (document.IsCheckedOut)
+        {
+            throw new InvalidOperationException($"Dokumen sudah di-check-out oleh {document.CheckedOutBy}.");
+        }
+
+        document.CheckedOutAt = DateTime.UtcNow;
+        document.CheckedOutBy = Environment.UserName;
+        await context.SaveChangesAsync();
+    }
+
+    public async Task CancelCheckOutAsync(int documentId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var document = await context.Documents.FindAsync(documentId);
+        if (document is null)
+        {
+            return;
+        }
+
+        document.CheckedOutAt = null;
+        document.CheckedOutBy = null;
+        await context.SaveChangesAsync();
+    }
+
+    public async Task CheckInAsync(int documentId, string newFilePath, string? comment)
+    {
+        var vaultFileName = _vaultService.StoreFile(newFilePath);
+
+        try
+        {
+            var fileInfo = new FileInfo(newFilePath);
+            var now = DateTime.UtcNow;
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var document = await context.Documents
+                .Include(d => d.Versions)
+                .FirstOrDefaultAsync(d => d.Id == documentId)
+                ?? throw new InvalidOperationException("Dokumen tidak ditemukan.");
+
+            if (!document.IsCheckedOut)
+            {
+                throw new InvalidOperationException("Dokumen harus di-check-out sebelum check-in.");
+            }
+
+            var nextVersionNumber = document.Versions.Count == 0
+                ? 1
+                : document.Versions.Max(v => v.VersionNumber) + 1;
+
+            var version = new DocumentVersion
+            {
+                VersionNumber = nextVersionNumber,
+                VaultFileName = vaultFileName,
+                OriginalFileName = Path.GetFileName(newFilePath),
+                FileExtension = fileInfo.Extension,
+                FileSizeBytes = fileInfo.Length,
+                StoredAt = now,
+                Comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim(),
+            };
+
+            document.Versions.Add(version);
+            document.CurrentVersion = version;
+            document.ModifiedAt = now;
+            document.CheckedOutAt = null;
+            document.CheckedOutBy = null;
+
+            await context.SaveChangesAsync();
+        }
+        catch
+        {
+            _vaultService.DeleteFile(vaultFileName);
+            throw;
+        }
+    }
+
+    public async Task<string> ExportAsync(int documentId, string destinationFolder, int? versionId = null)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var document = await context.Documents
+            .Include(d => d.CurrentVersion)
+            .Include(d => d.Versions)
+            .FirstOrDefaultAsync(d => d.Id == documentId)
+            ?? throw new InvalidOperationException("Dokumen tidak ditemukan.");
+
+        var version = versionId.HasValue
+            ? document.Versions.FirstOrDefault(v => v.Id == versionId)
+            : document.CurrentVersion;
+
+        if (version is null)
+        {
+            throw new InvalidOperationException("Versi dokumen tidak ditemukan.");
+        }
+
+        return _vaultService.ExportFile(version.VaultFileName, destinationFolder, version.OriginalFileName);
+    }
+
+    public async Task<List<DocumentVersion>> GetVersionsAsync(int documentId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        return await context.DocumentVersions
+            .Where(v => v.DocumentId == documentId)
+            .OrderByDescending(v => v.VersionNumber)
+            .ToListAsync();
+    }
 }

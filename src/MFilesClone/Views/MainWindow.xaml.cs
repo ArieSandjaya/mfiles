@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using Microsoft.Win32;
 using MFilesClone.Models;
 using MFilesClone.Services;
 using MFilesClone.ViewModels;
@@ -10,13 +11,17 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private readonly CategoryService _categoryService;
+    private readonly DocumentService _documentService;
+    private readonly VaultService _vaultService;
 
-    public MainWindow(MainViewModel viewModel, CategoryService categoryService)
+    public MainWindow(MainViewModel viewModel, CategoryService categoryService, DocumentService documentService, VaultService vaultService)
     {
         InitializeComponent();
 
         _viewModel = viewModel;
         _categoryService = categoryService;
+        _documentService = documentService;
+        _vaultService = vaultService;
         DataContext = _viewModel;
 
         Loaded += async (_, _) => await _viewModel.InitializeAsync();
@@ -98,5 +103,84 @@ public partial class MainWindow : Window
         }
 
         return true;
+    }
+
+    private async void CheckIn_Click(object sender, RoutedEventArgs e)
+    {
+        if (DocumentsGrid.SelectedItem is not Document document)
+        {
+            return;
+        }
+
+        if (!document.IsCheckedOut)
+        {
+            MessageBox.Show("Dokumen harus di-check-out sebelum check-in.", "Validasi", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var dialogViewModel = new CheckInViewModel(document.CurrentVersion?.OriginalFileName ?? document.Title);
+        var dialog = new CheckInDialog(dialogViewModel) { Owner = this };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await _documentService.CheckInAsync(document.Id, dialog.NewFilePath, dialog.Comment);
+            await _viewModel.RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorPresenter.Show("Gagal check-in dokumen", ex);
+        }
+    }
+
+    private async void Export_Click(object sender, RoutedEventArgs e)
+    {
+        if (DocumentsGrid.SelectedItem is not Document document)
+        {
+            return;
+        }
+
+        var folderDialog = new OpenFolderDialog { Title = "Pilih folder tujuan" };
+        if (folderDialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var path = await _documentService.ExportAsync(document.Id, folderDialog.FolderName);
+            MessageBox.Show($"Berhasil diekspor ke:\n{path}", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            ErrorPresenter.Show("Gagal mengekspor file", ex);
+        }
+    }
+
+    private void VersionHistory_Click(object sender, RoutedEventArgs e)
+    {
+        if (DocumentsGrid.SelectedItem is not Document document)
+        {
+            return;
+        }
+
+        var dialog = new VersionHistoryDialog(_documentService, document.Id, document.Title) { Owner = this };
+        dialog.ShowDialog();
+    }
+
+    private void Preview_Click(object sender, RoutedEventArgs e)
+    {
+        if (DocumentsGrid.SelectedItem is not Document document || document.CurrentVersion is null)
+        {
+            return;
+        }
+
+        var filePath = _vaultService.GetFullPath(document.CurrentVersion.VaultFileName);
+        var preview = new PreviewWindow(filePath, document.Title) { Owner = this };
+        preview.Show();
     }
 }

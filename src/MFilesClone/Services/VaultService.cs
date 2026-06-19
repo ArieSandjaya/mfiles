@@ -34,4 +34,27 @@ public class VaultService
     {
         File.Delete(GetFullPath(vaultFileName));
     }
+
+    public string ExportFile(string vaultFileName, string destinationFolder, string originalFileName)
+    {
+        var destinationPath = GetUniqueDestinationPath(destinationFolder, originalFileName);
+        File.Copy(GetFullPath(vaultFileName), destinationPath, overwrite: false);
+        return destinationPath;
+    }
+
+    private static string GetUniqueDestinationPath(string folder, string originalFileName)
+    {
+        var candidate = Path.Combine(folder, originalFileName);
+        var nameWithoutExtension = Path.GetFileNameWithoutExtension(originalFileName);
+        var extension = Path.GetExtension(originalFileName);
+        var counter = 1;
+
+        while (File.Exists(candidate))
+        {
+            candidate = Path.Combine(folder, $"{nameWithoutExtension} ({counter}){extension}");
+            counter++;
+        }
+
+        return candidate;
+    }
 }

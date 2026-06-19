@@ -1,0 +1,28 @@
+<Window x:Class="MFilesClone.Views.VersionHistoryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Riwayat Versi" Height="400" Width="600"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DataGrid Grid.Row="0" ItemsSource="{Binding Versions}" SelectedItem="{Binding SelectedVersion}"
+                   AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" Name="VersionsGrid">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Versi" Binding="{Binding VersionNumber}" Width="60" />
+                <DataGridTextColumn Header="Nama File" Binding="{Binding OriginalFileName}" Width="2*" />
+                <DataGridTextColumn Header="Ukuran (bytes)" Binding="{Binding FileSizeBytes}" Width="*" />
+                <DataGridTextColumn Header="Disimpan" Binding="{Binding StoredAt}" Width="*" />
+                <DataGridTextColumn Header="Komentar" Binding="{Binding Comment}" Width="2*" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="Export..." Width="80" Click="ExportButton_Click" />
+            <Button Content="Tutup" Width="80" Margin="10,0,0,0" Click="CloseButton_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

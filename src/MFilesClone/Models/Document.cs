@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace MFilesClone.Models;
 
 public class Document
@@ -9,6 +11,11 @@ public class Document
     public DateTime ModifiedAt { get; set; }
     public int? CurrentVersionId { get; set; }
     public bool IsDeleted { get; set; }
+    public DateTime? CheckedOutAt { get; set; }
+    public string? CheckedOutBy { get; set; }
+
+    [NotMapped]
+    public bool IsCheckedOut => CheckedOutAt.HasValue;
 
     public Category? Category { get; set; }
     public DocumentVersion? CurrentVersion { get; set; }

@@ -75,4 +75,35 @@ public partial class MainViewModel : ViewModelBase
         await _documentService.DeleteAsync(document.Id);
         await RefreshAsync();
     }
+
+    [RelayCommand]
+    private async Task CheckOutSelectedAsync(Document? document)
+    {
+        if (document is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _documentService.CheckOutAsync(document.Id);
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorPresenter.Show("Gagal check-out dokumen", ex);
+        }
+    }
+
+    [RelayCommand]
+    private async Task CancelCheckOutSelectedAsync(Document? document)
+    {
+        if (document is null)
+        {
+            return;
+        }
+
+        await _documentService.CancelCheckOutAsync(document.Id);
+        await RefreshAsync();
+    }
 }
