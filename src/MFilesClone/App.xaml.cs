@@ -34,6 +34,11 @@ public partial class App : Application
 
             var mainWindow = Services.GetRequiredService<MainWindow>();
             mainWindow.Show();
+
+            if (e.Args.Length > 0)
+            {
+                _ = mainWindow.ImportFilesAsync(e.Args);
+            }
         }
         catch (Exception ex)
         {
@@ -50,5 +55,8 @@ public partial class App : Application
         services.AddSingleton<CategoryService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
+        services.AddSingleton<VaultFileSystem>();
+        services.AddSingleton<VfsMountService>();
+        services.AddSingleton<IDocumentImportPrompt>(sp => sp.GetRequiredService<MainWindow>());
     }
 }

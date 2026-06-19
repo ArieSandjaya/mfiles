@@ -31,6 +31,8 @@
             <Button Content="Export..." Margin="5,0,0,0" Click="Export_Click" />
             <Button Content="Riwayat Versi..." Margin="5,0,0,0" Click="VersionHistory_Click" />
             <Button Content="Preview" Margin="5,0,0,0" Click="Preview_Click" />
+            <Button Content="Mount Drive M:" Margin="15,0,0,0" Click="MountDrive_Click" />
+            <Button Content="Unmount Drive" Margin="5,0,0,0" Click="UnmountDrive_Click" />
         </StackPanel>
 
         <Grid Grid.Row="1">

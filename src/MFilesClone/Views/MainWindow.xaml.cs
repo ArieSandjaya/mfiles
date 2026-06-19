@@ -7,14 +7,20 @@ using MFilesClone.ViewModels;
 
 namespace MFilesClone.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IDocumentImportPrompt
 {
     private readonly MainViewModel _viewModel;
     private readonly CategoryService _categoryService;
     private readonly DocumentService _documentService;
     private readonly VaultService _vaultService;
+    private readonly VfsMountService _vfsMountService;
 
-    public MainWindow(MainViewModel viewModel, CategoryService categoryService, DocumentService documentService, VaultService vaultService)
+    public MainWindow(
+        MainViewModel viewModel,
+        CategoryService categoryService,
+        DocumentService documentService,
+        VaultService vaultService,
+        VfsMountService vfsMountService)
     {
         InitializeComponent();
 
@@ -22,9 +28,11 @@ public partial class MainWindow : Window
         _categoryService = categoryService;
         _documentService = documentService;
         _vaultService = vaultService;
+        _vfsMountService = vfsMountService;
         DataContext = _viewModel;
 
         Loaded += async (_, _) => await _viewModel.InitializeAsync();
+        Closed += (_, _) => _vfsMountService.Unmount();
     }
 
     private void Window_DragEnter(object sender, DragEventArgs e)
@@ -40,6 +48,11 @@ public partial class MainWindow : Window
         }
 
         var filePaths = (string[])e.Data.GetData(DataFormats.FileDrop)!;
+        await ImportFilesAsync(filePaths);
+    }
+
+    public async Task ImportFilesAsync(IEnumerable<string> filePaths)
+    {
         var categories = await _categoryService.GetAllAsync();
         var failures = new List<string>();
         var addedAny = false;
@@ -79,10 +92,32 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<bool> ShowMetadataDialogAsync(string filePath, List<Category> categories)
+    public async Task<bool> PromptAndImportAsync(string sourceFilePath, int? categoryId)
+    {
+        return await Dispatcher.InvokeAsync(async () =>
+        {
+            var categories = await _categoryService.GetAllAsync();
+            var preselected = categoryId.HasValue ? categories.FirstOrDefault(c => c.Id == categoryId) : null;
+            var added = await ShowMetadataDialogAsync(sourceFilePath, categories, preselected);
+
+            if (added)
+            {
+                await _viewModel.RefreshCategoriesAsync();
+            }
+
+            return added;
+        }).Task.Unwrap();
+    }
+
+    private async Task<bool> ShowMetadataDialogAsync(string filePath, List<Category> categories, Category? preselectedCategory = null)
     {
         var dialogViewModel = new MetadataEntryViewModel(_categoryService, filePath);
         dialogViewModel.SetCategories(categories);
+
+        if (preselectedCategory is not null)
+        {
+            dialogViewModel.SelectedCategory = preselectedCategory;
+        }
 
         var dialog = new MetadataEntryDialog(dialogViewModel) { Owner = this };
 
@@ -182,5 +217,22 @@ public partial class MainWindow : Window
         var filePath = _vaultService.GetFullPath(document.CurrentVersion.VaultFileName);
         var preview = new PreviewWindow(filePath, document.Title) { Owner = this };
         preview.Show();
+    }
+
+    private void MountDrive_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _vfsMountService.Mount();
+        }
+        catch (Exception ex)
+        {
+            ErrorPresenter.Show("Gagal mount virtual drive (pastikan driver Dokan terinstall)", ex);
+        }
+    }
+
+    private void UnmountDrive_Click(object sender, RoutedEventArgs e)
+    {
+        _vfsMountService.Unmount();
     }
 }
