@@ -164,16 +164,16 @@ public class VaultFileSystem : IDokanOperations
             return DokanResult.FileNotFound;
         }
 
-        using var stream = File.OpenRead(_vaultService.GetFullPath(document.CurrentVersion.VaultFileName));
+        var content = _vaultService.ReadFileBytes(document.CurrentVersion.VaultFileName);
 
-        if (offset >= stream.Length)
+        if (offset >= content.Length)
         {
             bytesRead = 0;
             return DokanResult.Success;
         }
 
-        stream.Position = offset;
-        bytesRead = stream.Read(buffer, 0, buffer.Length);
+        bytesRead = (int)Math.Min(buffer.Length, content.Length - offset);
+        Array.Copy(content, offset, buffer, 0, bytesRead);
         return DokanResult.Success;
     }
 

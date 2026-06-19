@@ -214,8 +214,30 @@ public partial class MainWindow : Window, IDocumentImportPrompt
             return;
         }
 
-        var filePath = _vaultService.GetFullPath(document.CurrentVersion.VaultFileName);
-        var preview = new PreviewWindow(filePath, document.Title) { Owner = this };
+        string tempPath;
+
+        try
+        {
+            tempPath = _vaultService.ExportToTempFile(document.CurrentVersion.VaultFileName, document.CurrentVersion.OriginalFileName);
+        }
+        catch (Exception ex)
+        {
+            ErrorPresenter.Show("Gagal membuka pratinjau", ex);
+            return;
+        }
+
+        var preview = new PreviewWindow(tempPath, document.Title) { Owner = this };
+        preview.Closed += (_, _) =>
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch (IOException)
+            {
+                // Best-effort cleanup; the OS temp folder is reclaimed eventually anyway.
+            }
+        };
         preview.Show();
     }
 

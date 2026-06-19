@@ -8,6 +8,8 @@ namespace MFilesClone.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
+    private const int PageSize = 100;
+
     private readonly DocumentService _documentService;
     private readonly CategoryService _categoryService;
 
@@ -16,6 +18,12 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     private Category? selectedCategoryFilter;
+
+    [ObservableProperty]
+    private bool hasMore;
+
+    [ObservableProperty]
+    private int totalCount;
 
     public ObservableCollection<Document> Documents { get; } = new();
     public ObservableCollection<Category> Categories { get; } = new();
@@ -43,7 +51,7 @@ public partial class MainViewModel : ViewModelBase
     public async Task RefreshAsync()
     {
         var sequence = ++_refreshSequence;
-        var results = await _documentService.SearchAsync(SearchText, SelectedCategoryFilter?.Id);
+        var page = await _documentService.SearchPageAsync(SearchText, SelectedCategoryFilter?.Id, skip: 0, take: PageSize);
 
         if (sequence != _refreshSequence)
         {
@@ -51,7 +59,34 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        Documents.ReplaceAll(results);
+        Documents.ReplaceAll(page.Items);
+        TotalCount = page.TotalCount;
+        HasMore = Documents.Count < page.TotalCount;
+    }
+
+    [RelayCommand]
+    public async Task LoadMoreAsync()
+    {
+        if (!HasMore)
+        {
+            return;
+        }
+
+        var sequence = ++_refreshSequence;
+        var page = await _documentService.SearchPageAsync(SearchText, SelectedCategoryFilter?.Id, skip: Documents.Count, take: PageSize);
+
+        if (sequence != _refreshSequence)
+        {
+            return;
+        }
+
+        foreach (var document in page.Items)
+        {
+            Documents.Add(document);
+        }
+
+        TotalCount = page.TotalCount;
+        HasMore = Documents.Count < page.TotalCount;
     }
 
     partial void OnSearchTextChanged(string value) => _ = RefreshAsync();

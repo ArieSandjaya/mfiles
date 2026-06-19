@@ -82,14 +82,12 @@ public class DocumentService
             .ToListAsync();
     }
 
-    public async Task<List<Document>> SearchAsync(string? keyword, int? categoryId)
+    public async Task<DocumentPage> SearchPageAsync(string? keyword, int? categoryId, int skip, int take)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
         var query = context.Documents
             .Where(d => !d.IsDeleted)
-            .Include(d => d.Category)
-            .Include(d => d.CurrentVersion)
             .AsQueryable();
 
         if (categoryId.HasValue)
@@ -104,7 +102,17 @@ public class DocumentService
                 d.Metadata.Any(m => m.Value.Contains(keyword)));
         }
 
-        return await query.OrderByDescending(d => d.CreatedAt).ToListAsync();
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Include(d => d.Category)
+            .Include(d => d.CurrentVersion)
+            .OrderByDescending(d => d.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+
+        return new DocumentPage(items, totalCount);
     }
 
     public async Task UpdateMetadataAsync(int documentId, IEnumerable<(string Key, string Value)> metadata)
@@ -251,3 +259,5 @@ public class DocumentService
             .ToListAsync();
     }
 }
+
+public record DocumentPage(List<Document> Items, int TotalCount);

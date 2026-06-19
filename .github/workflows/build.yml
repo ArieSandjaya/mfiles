@@ -24,3 +24,35 @@ jobs:
 
       - name: Build
         run: dotnet build MFilesClone.sln --no-restore --configuration Release
+
+  installer:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish MFilesClone
+        run: dotnet publish src/MFilesClone/MFilesClone.csproj -c Release -r win-x64 --self-contained true -o publish/MFilesClone
+
+      - name: Publish MFilesClone.ShellExtension
+        run: dotnet publish src/MFilesClone.ShellExtension/MFilesClone.ShellExtension.csproj -c Release -r win-x64 --self-contained true -o publish/MFilesClone
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\Setup.iss'
+        shell: pwsh
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MFilesCloneSetup
+          path: installer/Output/MFilesCloneSetup.exe

@@ -5,6 +5,9 @@
         AllowDrop="True"
         DragEnter="Window_DragEnter"
         Drop="Window_Drop">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </Window.Resources>
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -64,6 +67,11 @@
             </TextBlock>
         </Grid>
 
-        <TextBlock Grid.Row="2" Margin="0,10,0,0" Text="{Binding Documents.Count, StringFormat='{}{0} dokumen'}" />
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+            <TextBlock Text="{Binding Documents.Count, StringFormat='Menampilkan {0}'}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding TotalCount, StringFormat=' dari {0} dokumen'}" VerticalAlignment="Center" />
+            <Button Content="Muat Lebih Banyak" Margin="15,0,0,0" Command="{Binding LoadMoreCommand}"
+                    Visibility="{Binding HasMore, Converter={StaticResource BoolToVisibilityConverter}}" />
+        </StackPanel>
     </Grid>
 </Window>
