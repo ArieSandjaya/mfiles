@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace MFilesClone.Data.Migrations
+namespace MFilesClone.Server.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -15,10 +15,10 @@ namespace MFilesClone.Data.Migrations
                 name: "Categories",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    ParentCategoryId = table.Column<int>(type: "INTEGER", nullable: true)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    ParentCategoryId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -35,11 +35,11 @@ namespace MFilesClone.Data.Migrations
                 name: "DocumentMetadata",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    DocumentId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Key = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Value = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    DocumentId = table.Column<int>(type: "int", nullable: false),
+                    Key = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -50,14 +50,16 @@ namespace MFilesClone.Data.Migrations
                 name: "Documents",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Title = table.Column<string>(type: "TEXT", maxLength: 260, nullable: false),
-                    CategoryId = table.Column<int>(type: "INTEGER", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    ModifiedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    CurrentVersionId = table.Column<int>(type: "INTEGER", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Title = table.Column<string>(type: "nvarchar(260)", maxLength: 260, nullable: false),
+                    CategoryId = table.Column<int>(type: "int", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ModifiedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CurrentVersionId = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    CheckedOutAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CheckedOutBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -74,17 +76,17 @@ namespace MFilesClone.Data.Migrations
                 name: "DocumentVersions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    DocumentId = table.Column<int>(type: "INTEGER", nullable: false),
-                    VersionNumber = table.Column<int>(type: "INTEGER", nullable: false),
-                    VaultFileName = table.Column<string>(type: "TEXT", nullable: false),
-                    OriginalFileName = table.Column<string>(type: "TEXT", nullable: false),
-                    FileExtension = table.Column<string>(type: "TEXT", nullable: false),
-                    FileSizeBytes = table.Column<long>(type: "INTEGER", nullable: false),
-                    FileHash = table.Column<string>(type: "TEXT", nullable: true),
-                    StoredAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Comment = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    DocumentId = table.Column<int>(type: "int", nullable: false),
+                    VersionNumber = table.Column<int>(type: "int", nullable: false),
+                    VaultFileName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    OriginalFileName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FileExtension = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FileSizeBytes = table.Column<long>(type: "bigint", nullable: false),
+                    FileHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    StoredAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Comment = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {

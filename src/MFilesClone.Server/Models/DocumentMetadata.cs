@@ -1,4 +1,4 @@
-namespace MFilesClone.Models;
+namespace MFilesClone.Server.Models;
 
 public class DocumentMetadata
 {

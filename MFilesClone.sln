@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MFilesClone", "src\MFilesCl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MFilesClone.ShellExtension", "src\MFilesClone.ShellExtension\MFilesClone.ShellExtension.csproj", "{B2C3D4E5-F6A7-4B5C-9D0E-1F2A3B4C5D6E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MFilesClone.Shared", "src\MFilesClone.Shared\MFilesClone.Shared.csproj", "{0678BBF1-FB9E-4394-A6A9-400B61176643}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MFilesClone.Server", "src\MFilesClone.Server\MFilesClone.Server.csproj", "{91FE7735-3D0E-4EEA-9354-1DD6652BC6A1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{B2C3D4E5-F6A7-4B5C-9D0E-1F2A3B4C5D6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B2C3D4E5-F6A7-4B5C-9D0E-1F2A3B4C5D6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B2C3D4E5-F6A7-4B5C-9D0E-1F2A3B4C5D6E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0678BBF1-FB9E-4394-A6A9-400B61176643}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0678BBF1-FB9E-4394-A6A9-400B61176643}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0678BBF1-FB9E-4394-A6A9-400B61176643}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0678BBF1-FB9E-4394-A6A9-400B61176643}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91FE7735-3D0E-4EEA-9354-1DD6652BC6A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91FE7735-3D0E-4EEA-9354-1DD6652BC6A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91FE7735-3D0E-4EEA-9354-1DD6652BC6A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91FE7735-3D0E-4EEA-9354-1DD6652BC6A1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

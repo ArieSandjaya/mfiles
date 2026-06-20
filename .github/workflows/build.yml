@@ -25,6 +25,15 @@ jobs:
       - name: Build
         run: dotnet build MFilesClone.sln --no-restore --configuration Release
 
+      - name: Publish MFilesClone.Server
+        run: dotnet publish src/MFilesClone.Server/MFilesClone.Server.csproj -c Release -o publish/MFilesClone.Server
+
+      - name: Upload MFilesClone.Server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MFilesCloneServer
+          path: publish/MFilesClone.Server
+
   installer:
     needs: build
     runs-on: windows-latest

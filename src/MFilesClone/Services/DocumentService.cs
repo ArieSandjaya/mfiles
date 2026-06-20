@@ -1,263 +1,219 @@
 using System.IO;
-using Microsoft.EntityFrameworkCore;
-using MFilesClone.Data;
-using MFilesClone.Models;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using MFilesClone.Shared;
 
 namespace MFilesClone.Services;
 
+// Talks to MFilesClone.Server over HTTP instead of touching a local database/vault.
+// The current Windows logon flows through automatically via ServerConnection's
+// UseDefaultCredentials handler, so no separate sign-in step is needed here.
 public class DocumentService
 {
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
-    private readonly VaultService _vaultService;
-
-    public DocumentService(IDbContextFactory<AppDbContext> contextFactory, VaultService vaultService)
-    {
-        _contextFactory = contextFactory;
-        _vaultService = vaultService;
-    }
-
-    public async Task<Document> CreateDocumentAsync(
+    public async Task<DocumentDto> CreateDocumentAsync(
         string sourceFilePath,
         string title,
         int? categoryId,
         IEnumerable<(string Key, string Value)> metadata)
     {
-        var vaultFileName = _vaultService.StoreFile(sourceFilePath);
+        using var client = ServerConnection.CreateHttpClient();
+        using var content = new MultipartFormDataContent();
 
-        try
-        {
-            var fileInfo = new FileInfo(sourceFilePath);
-            var now = DateTime.UtcNow;
-
-            await using var context = await _contextFactory.CreateDbContextAsync();
-
-            var version = new DocumentVersion
-            {
-                VersionNumber = 1,
-                VaultFileName = vaultFileName,
-                OriginalFileName = Path.GetFileName(sourceFilePath),
-                FileExtension = fileInfo.Extension,
-                FileSizeBytes = fileInfo.Length,
-                StoredAt = now,
-            };
-
-            var document = new Document
-            {
-                Title = title,
-                CategoryId = categoryId,
-                CreatedAt = now,
-                ModifiedAt = now,
-                IsDeleted = false,
-                CurrentVersion = version,
-            };
-
-            document.Versions.Add(version);
-
-            foreach (var (key, value) in metadata)
-            {
-                document.Metadata.Add(new DocumentMetadata { Key = key, Value = value });
-            }
-
-            context.Documents.Add(document);
-            await context.SaveChangesAsync();
-
-            return document;
-        }
-        catch
-        {
-            _vaultService.DeleteFile(vaultFileName);
-            throw;
-        }
-    }
-
-    public async Task<List<Document>> GetAllAsync()
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        return await context.Documents
-            .Where(d => !d.IsDeleted)
-            .Include(d => d.Category)
-            .Include(d => d.CurrentVersion)
-            .OrderByDescending(d => d.CreatedAt)
-            .ToListAsync();
-    }
-
-    public async Task<DocumentPage> SearchPageAsync(string? keyword, int? categoryId, int skip, int take)
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var query = context.Documents
-            .Where(d => !d.IsDeleted)
-            .AsQueryable();
+        await using var fileStream = File.OpenRead(sourceFilePath);
+        using var streamContent = new StreamContent(fileStream);
+        content.Add(streamContent, "file", Path.GetFileName(sourceFilePath));
+        content.Add(new StringContent(title), "title");
 
         if (categoryId.HasValue)
         {
-            query = query.Where(d => d.CategoryId == categoryId);
+            content.Add(new StringContent(categoryId.Value.ToString()), "categoryId");
         }
+
+        var metadataDtos = metadata.Select(m => new DocumentMetadataDto { Key = m.Key, Value = m.Value }).ToList();
+        content.Add(new StringContent(JsonSerializer.Serialize(metadataDtos)), "metadata");
+
+        using var response = await client.PostAsync("api/documents", content);
+        await EnsureSuccessAsync(response);
+
+        return (await response.Content.ReadFromJsonAsync<DocumentDto>())!;
+    }
+
+    public async Task<List<DocumentDto>> GetAllAsync()
+    {
+        var page = await SearchPageAsync(null, null, 0, int.MaxValue);
+        return page.Items;
+    }
+
+    public async Task<DocumentPageDto> SearchPageAsync(string? keyword, int? categoryId, int skip, int take)
+    {
+        using var client = ServerConnection.CreateHttpClient();
+
+        var query = $"api/documents?skip={skip}&take={take}";
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            query = query.Where(d =>
-                d.Title.Contains(keyword) ||
-                d.Metadata.Any(m => m.Value.Contains(keyword)));
+            query += $"&keyword={Uri.EscapeDataString(keyword)}";
         }
 
-        var totalCount = await query.CountAsync();
+        if (categoryId.HasValue)
+        {
+            query += $"&categoryId={categoryId.Value}";
+        }
 
-        var items = await query
-            .Include(d => d.Category)
-            .Include(d => d.CurrentVersion)
-            .OrderByDescending(d => d.CreatedAt)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync();
+        using var response = await client.GetAsync(query);
+        await EnsureSuccessAsync(response);
 
-        return new DocumentPage(items, totalCount);
+        return (await response.Content.ReadFromJsonAsync<DocumentPageDto>())!;
     }
 
     public async Task UpdateMetadataAsync(int documentId, IEnumerable<(string Key, string Value)> metadata)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        using var client = ServerConnection.CreateHttpClient();
 
-        var existing = context.DocumentMetadata.Where(m => m.DocumentId == documentId);
-        context.DocumentMetadata.RemoveRange(existing);
-
-        foreach (var (key, value) in metadata)
+        var request = new UpdateMetadataRequest
         {
-            context.DocumentMetadata.Add(new DocumentMetadata { DocumentId = documentId, Key = key, Value = value });
-        }
+            Metadata = metadata.Select(m => new DocumentMetadataDto { Key = m.Key, Value = m.Value }).ToList(),
+        };
 
-        await context.SaveChangesAsync();
+        using var response = await client.PutAsJsonAsync($"api/documents/{documentId}/metadata", request);
+        await EnsureSuccessAsync(response);
     }
 
     public async Task DeleteAsync(int documentId)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var document = await context.Documents.FindAsync(documentId);
-        if (document is null)
-        {
-            return;
-        }
-
-        document.IsDeleted = true;
-        await context.SaveChangesAsync();
+        using var client = ServerConnection.CreateHttpClient();
+        using var response = await client.DeleteAsync($"api/documents/{documentId}");
+        await EnsureSuccessAsync(response);
     }
 
     public async Task CheckOutAsync(int documentId)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        using var client = ServerConnection.CreateHttpClient();
+        using var response = await client.PostAsync($"api/documents/{documentId}/checkout", content: null);
 
-        var document = await context.Documents.FindAsync(documentId)
-            ?? throw new InvalidOperationException("Dokumen tidak ditemukan.");
-
-        if (document.IsCheckedOut)
+        if (response.StatusCode == HttpStatusCode.Conflict)
         {
-            throw new InvalidOperationException($"Dokumen sudah di-check-out oleh {document.CheckedOutBy}.");
+            var message = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(message);
         }
 
-        document.CheckedOutAt = DateTime.UtcNow;
-        document.CheckedOutBy = Environment.UserName;
-        await context.SaveChangesAsync();
+        await EnsureSuccessAsync(response);
     }
 
     public async Task CancelCheckOutAsync(int documentId)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var document = await context.Documents.FindAsync(documentId);
-        if (document is null)
-        {
-            return;
-        }
-
-        document.CheckedOutAt = null;
-        document.CheckedOutBy = null;
-        await context.SaveChangesAsync();
+        using var client = ServerConnection.CreateHttpClient();
+        using var response = await client.PostAsync($"api/documents/{documentId}/checkout/cancel", content: null);
+        await EnsureSuccessAsync(response);
     }
 
     public async Task CheckInAsync(int documentId, string newFilePath, string? comment)
     {
-        var vaultFileName = _vaultService.StoreFile(newFilePath);
+        using var client = ServerConnection.CreateHttpClient();
+        using var content = new MultipartFormDataContent();
 
-        try
+        await using var fileStream = File.OpenRead(newFilePath);
+        using var streamContent = new StreamContent(fileStream);
+        content.Add(streamContent, "file", Path.GetFileName(newFilePath));
+
+        if (!string.IsNullOrWhiteSpace(comment))
         {
-            var fileInfo = new FileInfo(newFilePath);
-            var now = DateTime.UtcNow;
-
-            await using var context = await _contextFactory.CreateDbContextAsync();
-
-            var document = await context.Documents
-                .Include(d => d.Versions)
-                .FirstOrDefaultAsync(d => d.Id == documentId)
-                ?? throw new InvalidOperationException("Dokumen tidak ditemukan.");
-
-            if (!document.IsCheckedOut)
-            {
-                throw new InvalidOperationException("Dokumen harus di-check-out sebelum check-in.");
-            }
-
-            var nextVersionNumber = document.Versions.Count == 0
-                ? 1
-                : document.Versions.Max(v => v.VersionNumber) + 1;
-
-            var version = new DocumentVersion
-            {
-                VersionNumber = nextVersionNumber,
-                VaultFileName = vaultFileName,
-                OriginalFileName = Path.GetFileName(newFilePath),
-                FileExtension = fileInfo.Extension,
-                FileSizeBytes = fileInfo.Length,
-                StoredAt = now,
-                Comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim(),
-            };
-
-            document.Versions.Add(version);
-            document.CurrentVersion = version;
-            document.ModifiedAt = now;
-            document.CheckedOutAt = null;
-            document.CheckedOutBy = null;
-
-            await context.SaveChangesAsync();
+            content.Add(new StringContent(comment), "comment");
         }
-        catch
+
+        using var response = await client.PostAsync($"api/documents/{documentId}/checkin", content);
+
+        if (response.StatusCode == HttpStatusCode.Conflict)
         {
-            _vaultService.DeleteFile(vaultFileName);
-            throw;
+            var message = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(message);
         }
+
+        await EnsureSuccessAsync(response);
     }
 
     public async Task<string> ExportAsync(int documentId, string destinationFolder, int? versionId = null)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        var (content, fileName) = await GetContentAndFileNameAsync(documentId, versionId);
 
-        var document = await context.Documents
-            .Include(d => d.CurrentVersion)
-            .Include(d => d.Versions)
-            .FirstOrDefaultAsync(d => d.Id == documentId)
-            ?? throw new InvalidOperationException("Dokumen tidak ditemukan.");
+        var destinationPath = GetUniqueDestinationPath(destinationFolder, fileName);
+        await File.WriteAllBytesAsync(destinationPath, content);
+        return destinationPath;
+    }
 
-        var version = versionId.HasValue
-            ? document.Versions.FirstOrDefault(v => v.Id == versionId)
-            : document.CurrentVersion;
+    public async Task<byte[]> GetFileBytesAsync(int documentId, int? versionId = null)
+    {
+        var (content, _) = await GetContentAndFileNameAsync(documentId, versionId);
+        return content;
+    }
 
-        if (version is null)
+    public async Task<string> DownloadToTempFileAsync(int documentId, int? versionId, string originalFileName)
+    {
+        var (content, _) = await GetContentAndFileNameAsync(documentId, versionId);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "MFilesClonePreview");
+        Directory.CreateDirectory(tempDir);
+
+        var tempPath = Path.Combine(tempDir, $"{Guid.NewGuid()}{Path.GetExtension(originalFileName)}");
+        await File.WriteAllBytesAsync(tempPath, content);
+        return tempPath;
+    }
+
+    public async Task<List<DocumentVersionDto>> GetVersionsAsync(int documentId)
+    {
+        using var client = ServerConnection.CreateHttpClient();
+        using var response = await client.GetAsync($"api/documents/{documentId}/versions");
+        await EnsureSuccessAsync(response);
+
+        return (await response.Content.ReadFromJsonAsync<List<DocumentVersionDto>>())!;
+    }
+
+    private async Task<(byte[] Content, string FileName)> GetContentAndFileNameAsync(int documentId, int? versionId)
+    {
+        using var client = ServerConnection.CreateHttpClient();
+
+        var query = $"api/documents/{documentId}/content";
+        if (versionId.HasValue)
         {
-            throw new InvalidOperationException("Versi dokumen tidak ditemukan.");
+            query += $"?versionId={versionId.Value}";
         }
 
-        return _vaultService.ExportFile(version.VaultFileName, destinationFolder, version.OriginalFileName);
+        using var response = await client.GetAsync(query);
+        await EnsureSuccessAsync(response);
+
+        var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"') ?? "file";
+        var content = await response.Content.ReadAsByteArrayAsync();
+        return (content, fileName);
     }
 
-    public async Task<List<DocumentVersion>> GetVersionsAsync(int documentId)
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
 
-        return await context.DocumentVersions
-            .Where(v => v.DocumentId == documentId)
-            .OrderByDescending(v => v.VersionNumber)
-            .ToListAsync();
+        var message = await response.Content.ReadAsStringAsync();
+        throw new InvalidOperationException(string.IsNullOrWhiteSpace(message)
+            ? $"Permintaan ke server gagal ({(int)response.StatusCode})."
+            : message);
+    }
+
+    private static string GetUniqueDestinationPath(string folder, string originalFileName)
+    {
+        var candidate = Path.Combine(folder, originalFileName);
+        var nameWithoutExtension = Path.GetFileNameWithoutExtension(originalFileName);
+        var extension = Path.GetExtension(originalFileName);
+        var counter = 1;
+
+        while (File.Exists(candidate))
+        {
+            candidate = Path.Combine(folder, $"{nameWithoutExtension} ({counter}){extension}");
+            counter++;
+        }
+
+        return candidate;
     }
 }
-
-public record DocumentPage(List<Document> Items, int TotalCount);

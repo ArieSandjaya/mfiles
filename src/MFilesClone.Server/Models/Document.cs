@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace MFilesClone.Models;
+namespace MFilesClone.Server.Models;
 
 public class Document
 {

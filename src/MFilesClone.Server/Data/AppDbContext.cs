@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using MFilesClone.Models;
-using MFilesClone.Services;
+using MFilesClone.Server.Models;
 
-namespace MFilesClone.Data;
+namespace MFilesClone.Server.Data;
 
 public class AppDbContext : DbContext
 {
@@ -11,20 +10,8 @@ public class AppDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<DocumentMetadata> DocumentMetadata => Set<DocumentMetadata>();
 
-    public AppDbContext()
-    {
-    }
-
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
-    }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlite(PathProvider.ConnectionString);
-        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

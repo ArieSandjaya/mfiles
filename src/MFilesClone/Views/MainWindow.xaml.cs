@@ -1,8 +1,8 @@
 using System.IO;
 using System.Windows;
 using Microsoft.Win32;
-using MFilesClone.Models;
 using MFilesClone.Services;
+using MFilesClone.Shared;
 using MFilesClone.ViewModels;
 
 namespace MFilesClone.Views;
@@ -12,14 +12,12 @@ public partial class MainWindow : Window, IDocumentImportPrompt
     private readonly MainViewModel _viewModel;
     private readonly CategoryService _categoryService;
     private readonly DocumentService _documentService;
-    private readonly VaultService _vaultService;
     private readonly VfsMountService _vfsMountService;
 
     public MainWindow(
         MainViewModel viewModel,
         CategoryService categoryService,
         DocumentService documentService,
-        VaultService vaultService,
         VfsMountService vfsMountService)
     {
         InitializeComponent();
@@ -27,7 +25,6 @@ public partial class MainWindow : Window, IDocumentImportPrompt
         _viewModel = viewModel;
         _categoryService = categoryService;
         _documentService = documentService;
-        _vaultService = vaultService;
         _vfsMountService = vfsMountService;
         DataContext = _viewModel;
 
@@ -109,7 +106,7 @@ public partial class MainWindow : Window, IDocumentImportPrompt
         }).Task.Unwrap();
     }
 
-    private async Task<bool> ShowMetadataDialogAsync(string filePath, List<Category> categories, Category? preselectedCategory = null)
+    private async Task<bool> ShowMetadataDialogAsync(string filePath, List<CategoryDto> categories, CategoryDto? preselectedCategory = null)
     {
         var dialogViewModel = new MetadataEntryViewModel(_categoryService, filePath);
         dialogViewModel.SetCategories(categories);
@@ -142,7 +139,7 @@ public partial class MainWindow : Window, IDocumentImportPrompt
 
     private async void CheckIn_Click(object sender, RoutedEventArgs e)
     {
-        if (DocumentsGrid.SelectedItem is not Document document)
+        if (DocumentsGrid.SelectedItem is not DocumentDto document)
         {
             return;
         }
@@ -174,7 +171,7 @@ public partial class MainWindow : Window, IDocumentImportPrompt
 
     private async void Export_Click(object sender, RoutedEventArgs e)
     {
-        if (DocumentsGrid.SelectedItem is not Document document)
+        if (DocumentsGrid.SelectedItem is not DocumentDto document)
         {
             return;
         }
@@ -198,7 +195,7 @@ public partial class MainWindow : Window, IDocumentImportPrompt
 
     private void VersionHistory_Click(object sender, RoutedEventArgs e)
     {
-        if (DocumentsGrid.SelectedItem is not Document document)
+        if (DocumentsGrid.SelectedItem is not DocumentDto document)
         {
             return;
         }
@@ -207,9 +204,9 @@ public partial class MainWindow : Window, IDocumentImportPrompt
         dialog.ShowDialog();
     }
 
-    private void Preview_Click(object sender, RoutedEventArgs e)
+    private async void Preview_Click(object sender, RoutedEventArgs e)
     {
-        if (DocumentsGrid.SelectedItem is not Document document || document.CurrentVersion is null)
+        if (DocumentsGrid.SelectedItem is not DocumentDto document || document.CurrentVersion is null)
         {
             return;
         }
@@ -218,7 +215,7 @@ public partial class MainWindow : Window, IDocumentImportPrompt
 
         try
         {
-            tempPath = _vaultService.ExportToTempFile(document.CurrentVersion.VaultFileName, document.CurrentVersion.OriginalFileName);
+            tempPath = await _documentService.DownloadToTempFileAsync(document.Id, document.CurrentVersion.Id, document.CurrentVersion.OriginalFileName);
         }
         catch (Exception ex)
         {

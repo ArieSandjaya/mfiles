@@ -2,7 +2,7 @@ using System.IO;
 using System.Security.AccessControl;
 using DokanNet;
 using Microsoft.Extensions.DependencyInjection;
-using MFilesClone.Models;
+using MFilesClone.Shared;
 using FileAccess = DokanNet.FileAccess;
 
 namespace MFilesClone.Services;
@@ -19,17 +19,15 @@ public class VaultFileSystem : IDokanOperations
     private const string UncategorizedFolderName = "Tanpa Kategori";
 
     private readonly DocumentService _documentService;
-    private readonly VaultService _vaultService;
     private readonly IServiceProvider _serviceProvider;
 
-    private readonly Dictionary<string, Document> _pathToDocument = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DocumentDto> _pathToDocument = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _folderNames = new();
     private readonly Dictionary<string, MemoryStream> _pendingWrites = new(StringComparer.OrdinalIgnoreCase);
 
-    public VaultFileSystem(DocumentService documentService, VaultService vaultService, IServiceProvider serviceProvider)
+    public VaultFileSystem(DocumentService documentService, IServiceProvider serviceProvider)
     {
         _documentService = documentService;
-        _vaultService = vaultService;
         _serviceProvider = serviceProvider;
     }
 
@@ -40,7 +38,7 @@ public class VaultFileSystem : IDokanOperations
         _pathToDocument.Clear();
         _folderNames.Clear();
 
-        foreach (var group in documents.GroupBy(d => d.Category?.Name ?? UncategorizedFolderName))
+        foreach (var group in documents.GroupBy(d => d.CategoryName ?? UncategorizedFolderName))
         {
             _folderNames.Add(group.Key);
             var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -136,7 +134,7 @@ public class VaultFileSystem : IDokanOperations
         File.WriteAllBytes(tempPath, buffer.ToArray());
 
         var folder = fileName.TrimStart('\\').Split('\\')[0];
-        var categoryId = _pathToDocument.Values.FirstOrDefault(d => d.Category?.Name == folder)?.CategoryId;
+        var categoryId = _pathToDocument.Values.FirstOrDefault(d => d.CategoryName == folder)?.CategoryId;
 
         try
         {
@@ -164,7 +162,7 @@ public class VaultFileSystem : IDokanOperations
             return DokanResult.FileNotFound;
         }
 
-        var content = _vaultService.ReadFileBytes(document.CurrentVersion.VaultFileName);
+        var content = _documentService.GetFileBytesAsync(document.Id, document.CurrentVersion.Id).GetAwaiter().GetResult();
 
         if (offset >= content.Length)
         {

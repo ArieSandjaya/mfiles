@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MFilesClone.Models;
 using MFilesClone.Services;
+using MFilesClone.Shared;
 
 namespace MFilesClone.ViewModels;
 
@@ -17,7 +17,7 @@ public partial class MainViewModel : ViewModelBase
     private string searchText = string.Empty;
 
     [ObservableProperty]
-    private Category? selectedCategoryFilter;
+    private CategoryDto? selectedCategoryFilter;
 
     [ObservableProperty]
     private bool hasMore;
@@ -25,8 +25,8 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private int totalCount;
 
-    public ObservableCollection<Document> Documents { get; } = new();
-    public ObservableCollection<Category> Categories { get; } = new();
+    public ObservableCollection<DocumentDto> Documents { get; } = new();
+    public ObservableCollection<CategoryDto> Categories { get; } = new();
 
     public MainViewModel(DocumentService documentService, CategoryService categoryService)
     {
@@ -91,7 +91,7 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnSearchTextChanged(string value) => _ = RefreshAsync();
 
-    partial void OnSelectedCategoryFilterChanged(Category? value) => _ = RefreshAsync();
+    partial void OnSelectedCategoryFilterChanged(CategoryDto? value) => _ = RefreshAsync();
 
     public async Task AddDocumentFromFileAsync(string sourceFilePath, string title, int? categoryId, IEnumerable<(string Key, string Value)> metadata)
     {
@@ -100,7 +100,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task DeleteSelectedAsync(Document? document)
+    private async Task DeleteSelectedAsync(DocumentDto? document)
     {
         if (document is null)
         {
@@ -112,7 +112,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task CheckOutSelectedAsync(Document? document)
+    private async Task CheckOutSelectedAsync(DocumentDto? document)
     {
         if (document is null)
         {
@@ -131,7 +131,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task CancelCheckOutSelectedAsync(Document? document)
+    private async Task CancelCheckOutSelectedAsync(DocumentDto? document)
     {
         if (document is null)
         {

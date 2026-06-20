@@ -1,32 +1,24 @@
-using Microsoft.EntityFrameworkCore;
-using MFilesClone.Data;
-using MFilesClone.Models;
+using System.Net.Http;
+using System.Net.Http.Json;
+using MFilesClone.Shared;
 
 namespace MFilesClone.Services;
 
 public class CategoryService
 {
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
-
-    public CategoryService(IDbContextFactory<AppDbContext> contextFactory)
+    public async Task<List<CategoryDto>> GetAllAsync()
     {
-        _contextFactory = contextFactory;
+        using var client = ServerConnection.CreateHttpClient();
+        var categories = await client.GetFromJsonAsync<List<CategoryDto>>("api/categories");
+        return categories ?? new List<CategoryDto>();
     }
 
-    public async Task<List<Category>> GetAllAsync()
+    public async Task<CategoryDto> CreateAsync(string name)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Categories.OrderBy(c => c.Name).ToListAsync();
-    }
+        using var client = ServerConnection.CreateHttpClient();
+        using var response = await client.PostAsJsonAsync("api/categories", new CreateCategoryRequest { Name = name });
+        response.EnsureSuccessStatusCode();
 
-    public async Task<Category> CreateAsync(string name)
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        var category = new Category { Name = name };
-        context.Categories.Add(category);
-        await context.SaveChangesAsync();
-
-        return category;
+        return (await response.Content.ReadFromJsonAsync<CategoryDto>())!;
     }
 }

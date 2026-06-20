@@ -2,8 +2,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MFilesClone.Models;
 using MFilesClone.Services;
+using MFilesClone.Shared;
 
 namespace MFilesClone.ViewModels;
 
@@ -21,12 +21,12 @@ public partial class MetadataEntryViewModel : ViewModelBase
     private string tags = string.Empty;
 
     [ObservableProperty]
-    private Category? selectedCategory;
+    private CategoryDto? selectedCategory;
 
     [ObservableProperty]
     private string newCategoryName = string.Empty;
 
-    public ObservableCollection<Category> Categories { get; } = new();
+    public ObservableCollection<CategoryDto> Categories { get; } = new();
 
     public string SourceFilePath { get; }
     public string OriginalFileName { get; }
@@ -41,7 +41,7 @@ public partial class MetadataEntryViewModel : ViewModelBase
         Title = Path.GetFileNameWithoutExtension(sourceFilePath);
     }
 
-    public void SetCategories(IEnumerable<Category> categories)
+    public void SetCategories(IEnumerable<CategoryDto> categories)
     {
         Categories.ReplaceAll(categories);
     }
